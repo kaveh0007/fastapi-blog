@@ -1,8 +1,12 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from typing import List, Dict
+from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI()
+templates = Jinja2Templates(directory="templates")
+app.mount('/static', StaticFiles(directory="static"), name='static')
 
 posts : List[Dict] = [
     {        
@@ -23,8 +27,9 @@ posts : List[Dict] = [
 
 @app.get("/posts", response_class=HTMLResponse, include_in_schema=False)
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
-def home():
-    return "<h1>FastAPI is a cool framework</h1>"
+@app.get("/posts", response_class=HTMLResponse, include_in_schema=False, name='home')
+def home(request: Request):
+    return templates.TemplateResponse(request=request, name="home.html", context={"posts" : posts})
 
 @app.get("/api/posts")
 def get_posts():
