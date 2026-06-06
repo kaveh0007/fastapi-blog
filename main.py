@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from fastapi.exceptions import RequestValidationError
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -49,9 +50,37 @@ def get_post(post_id: int):
             return post
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=[{"error": "post not Found"}])
 
-@app.exception_handler(HTTPException)
-def handle_HTTPException(request: Request, exception: HTTPException):
-    print(request.url.path)
+@app.exception_handler(StarletteHTTPException)
+def handle_HTTPException(request: Request, exception: StarletteHTTPException):
+    if exception.detail:
+        if isinstance(exception.detail, List):
+            message = exception.detail[0].get("error")
+        else:
+            message = exception.detail
+    else:
+        message = "Aw Snap! An error occured, please try again."
+
     if request.url.path.startswith("/api"):
-        return JSONResponse(exception.detail, exception.status_code)
-    return templates.TemplateResponse(request, "error.html", {"status_code": exception.status_code, "message": exception.detail[0].get("error")})
+        return JSONResponse(
+            content={"detail": message},
+            status_code = exception.status_code
+            )
+    return templates.TemplateResponse(
+        request, 
+        "error.html",
+        {"status_code": exception.status_code, "message": message}, status_code = exception.status_code
+        )
+
+@app.exception_handler(RequestValidationError)
+def handle_ValidationError(request: Request, exception: RequestValidationError):
+    if request.url.path.startswith("/api"):
+        return JSONResponse(
+            content = exception.errors(),
+            status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
+            )
+    return templates.TemplateResponse(
+        request,
+        "error.html",
+        {"status_code": status.HTTP_422_UNPROCESSABLE_CONTENT, "message": exception.errors()[0].get("msg")},
+        status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
+        )
