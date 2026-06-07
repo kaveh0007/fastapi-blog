@@ -5,6 +5,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.exceptions import RequestValidationError
+from schemas import PostRetrieve, PostCreate
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -39,11 +40,24 @@ def post_page(post_id: int, request: Request):
             return templates.TemplateResponse(request, "post_page.html", {"title": post.get('title'), "post": post})
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=[{"error": "post not found"}])
 
-@app.get("/api/posts")
+@app.get("/api/posts", response_model=list[PostRetrieve])
 def get_posts():
     return posts
 
-@app.get("/api/posts/{post_id}")
+@app.post("/api/posts", response_model=PostRetrieve)
+def create_posts(post: PostCreate):
+    id = len(posts) + 1 if posts else 1
+    post = {
+        "id": id,
+        "author": post.author,
+        "title": post.title,
+        "content": post.content,
+        "date_posted": "June 10, 2026"
+    }
+    posts.append(post)
+    return post
+
+@app.get("/api/posts/{post_id}", response_model=PostRetrieve)
 def get_post(post_id: int):
     for post in posts:
         if post.get("id") == post_id:
