@@ -10,6 +10,7 @@ from schemas import PostRetrieve, PostCreate
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 app.mount('/static', StaticFiles(directory="static"), name='static')
+# app.mount('/uploads', StaticFiles(directory="uploads"), name='static')
 
 posts : List[Dict] = [
     {        
@@ -44,7 +45,7 @@ def post_page(post_id: int, request: Request):
 def get_posts():
     return posts
 
-@app.post("/api/posts", response_model=PostRetrieve)
+@app.post("/api/posts", response_model=dict)
 def create_posts(post: PostCreate):
     id = len(posts) + 1 if posts else 1
     post = {
