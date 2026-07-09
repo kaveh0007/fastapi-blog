@@ -1,14 +1,28 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, EmailStr
+from datetime import datetime
 
-class PostBase(BaseModel):
-    title: str = Field(min_length=1, max_length=50)
-    content: str = Field(min_length=1)
-    author: str = Field(min_length=1, max_length=50)
+class UserBase(BaseModel):
+    username: str = Field(min_length=2, max_length=50)
+    email: EmailStr = Field(max_length=120)
 
-class PostRetrieve(PostBase):
+class UserResponse(UserBase):
     model_config = ConfigDict(from_attributes=True)
     id: int
-    date_posted: str
+    image_file: str | None = None
+    image_path: str
+
+class UserCreate(UserBase):
+    pass
+class PostBase(BaseModel):
+    title: str = Field(min_length=1, max_length=100)
+    content: str = Field(min_length=1)
+
+class PostResponse(PostBase):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    user_id: int
+    date_posted: datetime
+    author: UserResponse
 
 class PostCreate(PostBase):
-    pass
+    user_id: int #Temporary, will get from session later
