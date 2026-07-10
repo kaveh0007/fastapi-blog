@@ -14,11 +14,14 @@ class User(Base):
     posts: Mapped[list[Post]] = relationship(back_populates="author")
 
     @property
+    def image_mount(self):
+        return "media" if self.image_file else "static"
+
+    @property
     def image_path(self):
         if self.image_file:
-            return str(Path(__file__).parent.resolve() / "media/profile_pics" / self.image_file)
-        return str(Path(__file__).parent.resolve() / "static/profile_pics/default.jpg")
-
+            return str(Path("/profile_pics" / self.image_file))
+        return str(Path("/assets/default.svg"))
 class Post(Base):
     __tablename__ = "post"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)

@@ -9,7 +9,8 @@ load_dotenv()
 # The sqlite3 DBAPI by default prohibits the use of a particular connection in a thread which is not the one in which it was created. 
 engine = create_engine(
     os.getenv("SQLALCHEMY_DATABASE_URL"),
-    connect_args = {"check_same_thread": False}
+    connect_args = {"check_same_thread": False},
+    pool_pre_ping=True
     )
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
