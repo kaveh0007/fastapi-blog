@@ -10,9 +10,15 @@ class UserResponse(UserBase):
     id: int
     image_file: str | None = None
     image_path: str
+    image_mount: str
 
 class UserCreate(UserBase):
     pass
+
+class UserUpdate(BaseModel):
+    username: str | None = Field(default=None, min_length=2, max_length=50)
+    email: EmailStr | None = Field(default=None, max_length=120)
+    image_file: str | None = Field(default=None)
 class PostBase(BaseModel):
     title: str = Field(min_length=1, max_length=100)
     content: str = Field(min_length=1)
@@ -26,3 +32,7 @@ class PostResponse(PostBase):
 
 class PostCreate(PostBase):
     user_id: int #Temporary, will get from session later
+
+class PostUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=100)
+    content: str | None = Field(default=None, min_length=1)

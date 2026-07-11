@@ -6,7 +6,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.exceptions import RequestValidationError
-from schemas import PostResponse, PostCreate, UserResponse, UserCreate
+from schemas import PostResponse, PostCreate, UserResponse, UserCreate, PostUpdate, UserUpdate
 from database import engine, Base, get_db
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -61,12 +61,35 @@ def create_users(user: UserCreate, db: Annotated[Session, Depends(get_db)]):
     db.refresh(new_user)
     return new_user
 
-@app.get("/api/users/{user_id}", response_model=UserResponse, status_code=status.HTTP_200_OK)
+@app.get("/api/users/{user_id}", response_model=UserResponse)
 def get_user(user_id: int, db: Annotated[Session, Depends(get_db)]):
     user = db.scalars(select(models.User).where(models.User.id == user_id)).first()
     if user:
         return user
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="no user found")
+
+@app.patch("/api/users/{user_id}", response_model=UserResponse)
+def update_user(user_id: int, updated_data: UserUpdate, db: Annotated[Session, Depends(get_db)]):
+    user = db.scalars(select(models.User).where(models.User.id == user_id)).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user not found")
+    
+    for key, value in updated_data.model_dump(exclude_unset=True).items():
+        setattr(user, key, value)
+
+    db.commit()
+    db.refresh(user)
+    return user
+
+@app.delete("/api/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(user_id: int, db: Annotated[Session, Depends(get_db)]):
+    user = db.scalars(select(models.User).where(models.User.id == user_id)).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="user not found")
+    db.delete(user)
+    db.commit()
+    return{}
+
 
 @app.get("/api/users/{user_id}/posts", response_model=list[PostResponse])
 def user_posts(user_id: int, db: Annotated[Session, Depends(get_db)]):
@@ -102,6 +125,49 @@ def get_post(post_id: int, db: Annotated[Session, Depends(get_db)]):
     if post:
         return post
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="post not found")
+
+@app.put("/api/posts/{post_id}", response_model=PostResponse)
+def update_post_full(post_id: int, updated_data: PostCreate, db: Annotated[Session, Depends(get_db)]):
+    post = db.scalars(select(models.Post).where(models.Post.id == post_id)).first()
+    if not post:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="post not found")
+    intended_user = db.scalars(select(models.User).where(models.User.id == updated_data.user_id)).first()
+    if not intended_user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="the intended user does not exist")
+    
+    for key, value in updated_data.model_dump().items():
+        setattr(post, key, value)
+
+    db.add(post)
+    db.commit()
+    db.refresh(post)
+
+    return post
+
+@app.patch("/api/posts/{post_id}", response_model=PostResponse)
+def update_post_partial(post_id: int, updated_data: PostUpdate, db: Annotated[Session, Depends(get_db)]):
+    post = db.scalars(select(models.Post).where(models.Post.id == post_id)).first()
+    if not post:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="post not found")
+    
+    for key, value in updated_data.model_dump(exclude_unset=True).items():
+        setattr(post, key, value)
+
+    db.commit()
+    db.refresh(post)
+
+    return post
+
+@app.delete("/api/posts/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_post(post_id: int, db: Annotated[Session, Depends(get_db)]):
+    post = db.scalars(select(models.Post).where(models.Post.id == post_id)).first()
+    if not post:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="post not found")
+    # stmt = delete(models.Post).where(models.Post.id == post_id)
+    # db.execute(stmt)
+    db.delete(post)
+    db.commit()
+    return {}
 
 @app.exception_handler(StarletteHTTPException)
 def handle_HTTPException(request: Request, exception: StarletteHTTPException):
